@@ -8,7 +8,7 @@ from matplotlib import rcParams
 
 class MatplotlibWidget(QWidget):
     def __init__(self, parent=None,
-                 width=4, height=3):
+                 width=12, height=9):
         QWidget.__init__(self, parent)
         super(MatplotlibWidget, self).__init__()
 
