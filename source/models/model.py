@@ -10,7 +10,7 @@ class FabryPerotModel(object):
         self.ringsum = None
         self.ringsum_err = None
         self.center = None
-        self.center = (2992, 1911)
+        self.center = None #(2992, 1911)
 
         self.status = 'Idle'
         self.update_registry = {'image_data': list(),

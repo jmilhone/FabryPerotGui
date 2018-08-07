@@ -12,6 +12,7 @@ class App(QtWidgets.QApplication):
         self.model = FabryPerotModel()
         self.controller = MainController(self.model)
         self.view = MainWindow(self.model, self.controller)
+        self.view.setGeometry(100, 100, 2000, 1000)
         self.view.show()
 
 
