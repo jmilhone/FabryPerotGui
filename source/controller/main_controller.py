@@ -22,18 +22,40 @@ class MainController(object):
         self.threadpool = QtCore.QThreadPool()
 
     def read_image_data(self, filename, bg_filename):
+        """Reads in image via helper function _read_image_data
+
+        :param filename: path to image file
+        :type filename: str
+        :param bg_filename: path to background image file
+        :type bg_filename: str
+        """
         worker = workers.Worker(self._read_image_data, filename, bg_filename)
         worker.signals.result.connect(self.update_model_image_data)
         self.threadpool.start(worker)
 
     @staticmethod
     def _read_image_data(filename, bg_filename):
+        """Reads in both image and background image data
+
+        :param filename: path to image file
+        :type filename: str
+        :param bg_filename: path to background image file
+        :type bg_filename: str
+        :return: image and background 2D numpy arrays
+        :rtype: tuple (np.ndarray, np.ndarray)
+        """
         image_data = images.get_data(filename, color='b')
         bg_image_data = images.get_data(bg_filename, color='b')
 
         return image_data, bg_image_data
 
     def update_model_image_data(self, incoming_data):
+        """Updates self.model.image and self.model.background with incoming data and calls
+        self.model.announce_update for the image data registry
+
+        :param incoming_data: image and background image 2D numpy arrays
+        :type incoming_data: tuple (np.ndarray, np.ndarray)
+        """
         self.model.image = incoming_data[0]
         self.model.background = incoming_data[1]
 

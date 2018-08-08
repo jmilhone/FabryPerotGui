@@ -1,8 +1,8 @@
 from __future__ import print_function, absolute_import, division
 from PyQt5 import QtGui, QtWidgets, QtCore
 from .matplotlib_widget import MatplotlibWidget
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -16,11 +16,17 @@ class MainWindow(QtWidgets.QMainWindow):
     :type plot_window: source.views.matplotlib_widget.MatplotlibWidget
     """
 
-    def __init__(self, model, controller):
+    def __init__(self, model, controller, filename=None, bg_filename=None):
         super(MainWindow, self).__init__()
         self.model = model
         self.controller = controller
         self.cb = None
+
+        # set up menu bar and qactions
+        self.menu = QtWidgets.QMenuBar()
+        self.file_menu = self.menu.addMenu('File')
+
+        self.open_image_action = QtWidgets.QAction('Open Images', self)
 
         self.plot_window = MatplotlibWidget()
         self.central_widget = QtWidgets.QWidget()
@@ -38,20 +44,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.find_center_button = QtWidgets.QPushButton()
 
+        self.button_box = QtWidgets.QHBoxLayout()
+
         self.center_label = QtWidgets.QLabel()
 
         self.get_ringsum_button = QtWidgets.QPushButton()
         # Put all gui elements before this line!
         self.init_UI()
-
-        # image_name = "C:/Users/jason/Argon_calib.nef"
-        # bg_name = "C:/Users/jason/Argon_calib_bg.nef"
-
-        image_name = "/Users/milhone/Argon_calib.nef"
-        bg_name = "/Users/milhone/Argon_calib_bg.nef"
-
-        print('calling read image')
-        self.controller.read_image_data(image_name, bg_name)
 
         # Subscribe functions for updates in model
         self.model.subscribe_update_func(self.display_image_data, registry='image_data')
@@ -62,9 +61,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # Set up PyQt signals for GUI Events
         self.find_center_button.clicked.connect(self.find_center)
         self.get_ringsum_button.clicked.connect(self.find_ringsum)
+        self.open_image_action.triggered.connect(self.open_images_dialog)
 
+        if filename and bg_filename:
+            self.controller.read_image_data(filename, bg_filename)
 
     def init_UI(self):
+        # options for qactions
+        self.open_image_action.setCheckable(False)
+
+        # add actions to menu bar
+        self.file_menu.addAction(self.open_image_action)
+
         self.x0_label.setText("X Center Guess: ")
         self.y0_label.setText("Y Center Guess: ")
 
@@ -86,11 +94,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.y0_guess_box.addWidget(self.y0_label)
         self.y0_guess_box.addWidget(self.y0_entry)
 
+        self.button_box.addWidget(self.find_center_button)
+        self.button_box.addWidget(self.get_ringsum_button)
+
         self.sidebar_vbox.addLayout(self.x0_guess_box)
         self.sidebar_vbox.addLayout(self.y0_guess_box)
-        self.sidebar_vbox.addWidget(self.find_center_button)
         self.sidebar_vbox.addWidget(self.center_label)
-        self.sidebar_vbox.addWidget(self.get_ringsum_button)
+        self.sidebar_vbox.addLayout(self.button_box)
         self.sidebar_vbox.addStretch()
 
         self.hbox.addWidget(self.plot_window, 10)
@@ -126,8 +136,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.x0_entry.value() == 0.0:
             self.x0_entry.setValue(nx/2.0)
+            self.x0_entry.setValue(2985.7)
         if self.y0_entry.value() == 0.0:
             self.y0_entry.setValue(ny/2.0)
+            self.y0_entry.setValue(1934.0)
 
     def update_center_label(self):
         if self.model.center is None:
@@ -167,3 +179,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_window.toolbar.update()
         self.plot_window.toolbar.push_current()
         self.plot_window.canvas.draw()
+
+    def open_images_dialog(self, checked):
+        dlg = QtWidgets.QFileDialog(self, 'Pick an Image')
+        dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
+        dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)"])
+        dlg.selectNameFilter("Images (*.nef)")
+
+        if not dlg.exec_():
+            return
+
+        filename = dlg.selectedFiles()[0]
+
+        dlg = QtWidgets.QFileDialog(self, 'Pick a Background Image')
+        dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
+        dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)"])
+        dlg.selectNameFilter("Images (*.nef)")
+
+        if not dlg.exec_():
+            return
+
+        bg_filename = dlg.selectedFiles()[0]
+
+        self.controller.read_image_data(filename, bg_filename)
+
+
+
