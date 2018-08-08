@@ -23,7 +23,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cb = None
 
         # set up menu bar and qactions
-        self.menu = QtWidgets.QMenuBar()
+        # self.menu = QtWidgets.QMenuBar()
+        self.menu = self.menuBar()
         self.file_menu = self.menu.addMenu('File')
 
         self.open_image_action = QtWidgets.QAction('Open Images', self)
@@ -49,6 +50,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.center_label = QtWidgets.QLabel()
 
         self.get_ringsum_button = QtWidgets.QPushButton()
+
+        self.status_label = QtWidgets.QLabel()
+
         # Put all gui elements before this line!
         self.init_UI()
 
@@ -57,6 +61,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.subscribe_update_func(self.update_initial_center_entry, registry='image_data')
         self.model.subscribe_update_func(self.plot_ringsum, registry='ringsum_data')
         self.model.subscribe_update_func(self.update_center_label, registry='image_data')
+        self.model.subscribe_update_func(self.update_status_label, registry='status')
 
         # Set up PyQt signals for GUI Events
         self.find_center_button.clicked.connect(self.find_center)
@@ -88,6 +93,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.get_ringsum_button.setText("Find Ringsum")
         self.get_ringsum_button.setDisabled(True)
 
+        self.status_label.setText("Status: IDLE")
+
         self.x0_guess_box.addWidget(self.x0_label)
         self.x0_guess_box.addWidget(self.x0_entry)
 
@@ -102,6 +109,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sidebar_vbox.addWidget(self.center_label)
         self.sidebar_vbox.addLayout(self.button_box)
         self.sidebar_vbox.addStretch()
+        self.sidebar_vbox.addWidget(self.status_label)
 
         self.hbox.addWidget(self.plot_window, 10)
         self.hbox.addLayout(self.sidebar_vbox, 4)
@@ -203,5 +211,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.controller.read_image_data(filename, bg_filename)
 
+    def update_status_label(self):
+        new_status = self.model.status
+        status_str = "Status: {0:s}".format(new_status)
+        self.status_label.setText(status_str)
 
 

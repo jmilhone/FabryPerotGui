@@ -24,11 +24,16 @@ if __name__ == "__main__":
     parser.add_argument("--background", "-B", type=str, help="file path to background image", default=None)
     args = parser.parse_args()
 
-    filename = path.expanduser(args.image)
-    bg_filename = path.expanduser(args.background)
+    filename = None
+    bg_filename = None
 
-    filename = path.abspath(filename)
-    bg_filename = path.abspath(bg_filename)
+    if args.image is not None:
+        filename = path.expanduser(args.image)
+        filename = path.abspath(filename)
+
+    if bg_filename is not None:
+        bg_filename = path.expanduser(args.background)
+        bg_filename = path.abspath(bg_filename)
 
     app = App(sys.argv, filename=filename, bg_filename=bg_filename)
     sys.exit(app.exec_())

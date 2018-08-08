@@ -29,6 +29,9 @@ class MainController(object):
         :param bg_filename: path to background image file
         :type bg_filename: str
         """
+        # self.model.status = 'Reading Images'
+        # self.model.announce_update(registry='status')
+        self.change_model_status_and_announce('Reading Images')
         worker = workers.Worker(self._read_image_data, filename, bg_filename)
         worker.signals.result.connect(self.update_model_image_data)
         self.threadpool.start(worker)
@@ -60,8 +63,14 @@ class MainController(object):
         self.model.background = incoming_data[1]
 
         self.model.announce_update(registry='image_data')
+        self.change_model_status_and_announce('IDLE')
+        # self.model.status = 'IDLE'
+        # self.model.announce_update(registry='status')
 
     def find_center(self, x_guess, y_guess):
+        # self.model.status = 'Locating Center'
+        # self.model.announce_update(registry='status')
+        self.change_model_status_and_announce('Locating Center')
         worker = workers.Worker(self._find_center, self.model.image, x_guess, y_guess)
         worker.signals.result.connect(self.update_center)
         self.threadpool.start(worker)
@@ -74,11 +83,14 @@ class MainController(object):
     def update_center(self, incoming_data):
         self.model.center = incoming_data
         self.model.announce_update(registry='image_data')
+        self.change_model_status_and_announce('IDLE')
 
     def get_ringsum(self):
         if self.model.center is None:
             return
-
+        # self.model.status = 'Performing ring sum'
+        # self.model.announce_update(registry='status')
+        self.change_model_status_and_announce('Performing ring sum')
         worker = workers.Worker(self._get_ringsum, self.model.image, self.model.background, *self.model.center)
         worker.signals.result.connect(self.update_ringsum)
         self.threadpool.start(worker)
@@ -99,4 +111,9 @@ class MainController(object):
         self.model.ringsum_err = incoming_data[2]
 
         self.model.announce_update(registry="ringsum_data")
+        self.change_model_status_and_announce('IDLE')
+
+    def change_model_status_and_announce(self, status):
+        self.model.status = status
+        self.model.announce_update(registry='status')
 
