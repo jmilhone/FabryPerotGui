@@ -3,11 +3,12 @@ import os.path as path
 import numpy as np
 sys.path.append(path.abspath("/Users/milhone/python_FabryPerot"))
 sys.path.append(path.abspath("C:/Users/jason/python_FabryPerot"))
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 from PyQt5 import QtCore
 from ..views import workers
-from fabry.tools import images
+from fabry.tools import images, file_io
 from fabry.core import ringsum
-
 
 class MainController(object):
     """
@@ -29,8 +30,8 @@ class MainController(object):
         :param bg_filename: path to background image file
         :type bg_filename: str
         """
-        # self.model.status = 'Reading Images'
-        # self.model.announce_update(registry='status')
+        self.model.image_name = filename
+        self.model.background_name = bg_filename
         self.change_model_status_and_announce('Reading Images')
         worker = workers.Worker(self._read_image_data, filename, bg_filename)
         worker.signals.result.connect(self.update_model_image_data)
@@ -64,12 +65,14 @@ class MainController(object):
 
         self.model.announce_update(registry='image_data')
         self.change_model_status_and_announce('IDLE')
-        # self.model.status = 'IDLE'
-        # self.model.announce_update(registry='status')
 
     def find_center(self, x_guess, y_guess):
-        # self.model.status = 'Locating Center'
-        # self.model.announce_update(registry='status')
+        """
+
+        :param x_guess:
+        :param y_guess:
+        :return:
+        """
         self.change_model_status_and_announce('Locating Center')
         worker = workers.Worker(self._find_center, self.model.image, x_guess, y_guess)
         worker.signals.result.connect(self.update_center)
@@ -77,19 +80,33 @@ class MainController(object):
 
     @staticmethod
     def _find_center(data, x_guess, y_guess):
+        """
+
+        :param data:
+        :param x_guess:
+        :param y_guess:
+        :return:
+        """
         x0, y0 = ringsum.locate_center(data, xguess=x_guess, yguess=y_guess, printit=True)
         return x0, y0
 
     def update_center(self, incoming_data):
+        """
+
+        :param incoming_data:
+        :return:
+        """
         self.model.center = incoming_data
         self.model.announce_update(registry='image_data')
         self.change_model_status_and_announce('IDLE')
 
     def get_ringsum(self):
+        """
+
+        :return:
+        """
         if self.model.center is None:
             return
-        # self.model.status = 'Performing ring sum'
-        # self.model.announce_update(registry='status')
         self.change_model_status_and_announce('Performing ring sum')
         worker = workers.Worker(self._get_ringsum, self.model.image, self.model.background, *self.model.center)
         worker.signals.result.connect(self.update_ringsum)
@@ -97,6 +114,14 @@ class MainController(object):
 
     @staticmethod
     def _get_ringsum(data, bg_data, x0, y0):
+        """
+
+        :param data:
+        :param bg_data:
+        :param x0:
+        :param y0:
+        :return:
+        """
         r, rs, rs_sd = ringsum.ringsum(data, x0, y0, quadrants=False, use_weighted=False)
         _, rs_bg, rs_sd_bg = ringsum.ringsum(bg_data, x0, y0, quadrants=False, use_weighted=False)
 
@@ -106,6 +131,11 @@ class MainController(object):
         return r, rs, rs_sd
 
     def update_ringsum(self, incoming_data):
+        """
+
+        :param incoming_data:
+        :return:
+        """
         self.model.r = incoming_data[0]
         self.model.ringsum = incoming_data[1]
         self.model.ringsum_err = incoming_data[2]
@@ -114,6 +144,21 @@ class MainController(object):
         self.change_model_status_and_announce('IDLE')
 
     def change_model_status_and_announce(self, status):
+        """
+
+        :param status:
+        :return:
+        """
         self.model.status = status
         self.model.announce_update(registry='status')
+
+    def save_model_data(self, output_filename):
+        """
+
+        :param output_filename:
+        :return:
+        """
+        output_dict = self.model.to_dict()
+        file_io.dict_2_h5(output_filename, output_dict)
+
 

@@ -8,6 +8,9 @@ from matplotlib.gridspec import GridSpec
 
 
 class MatplotlibWidget(QWidget):
+    """
+
+    """
     def __init__(self, parent=None,
                  width=12, height=9):
         QWidget.__init__(self, parent)
@@ -29,9 +32,15 @@ class MatplotlibWidget(QWidget):
         super(MatplotlibWidget, self).updateGeometry()
 
     def sizeHint(self):
+        """
+
+        :return:
+        """
         return QSize(*self.canvas.get_width_height())
 
     def minimumSizeHint(self):
+        """"""
+
         return QSize(10, 10)
 
 

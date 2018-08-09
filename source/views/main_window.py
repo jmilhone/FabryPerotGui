@@ -27,7 +27,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu = self.menuBar()
         self.file_menu = self.menu.addMenu('File')
 
-        self.open_image_action = QtWidgets.QAction('Open Images', self)
+        self.open_image_action = QtWidgets.QAction('Open Images...', self)
+        self.save_ringsum_action = QtWidgets.QAction('Save Ringsum Data...', self)
 
         self.plot_window = MatplotlibWidget()
         self.central_widget = QtWidgets.QWidget()
@@ -62,6 +63,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.subscribe_update_func(self.plot_ringsum, registry='ringsum_data')
         self.model.subscribe_update_func(self.update_center_label, registry='image_data')
         self.model.subscribe_update_func(self.update_status_label, registry='status')
+        self.model.subscribe_update_func(self.enable_save_ringsum, registry='ringsum_data')
 
         # Set up PyQt signals for GUI Events
         self.find_center_button.clicked.connect(self.find_center)
@@ -72,11 +74,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.controller.read_image_data(filename, bg_filename)
 
     def init_UI(self):
+        """
+
+        :return:
+        """
         # options for qactions
         self.open_image_action.setCheckable(False)
+        self.save_ringsum_action.setCheckable(False)
+        self.save_ringsum_action.setEnabled(False)
 
         # add actions to menu bar
         self.file_menu.addAction(self.open_image_action)
+        self.file_menu.addAction(self.save_ringsum_action)
 
         self.x0_label.setText("X Center Guess: ")
         self.y0_label.setText("Y Center Guess: ")
@@ -117,6 +126,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
 
     def display_image_data(self):
+        """
+
+        :return:
+        """
 
         self.plot_window.axs.cla()
 
@@ -140,6 +153,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_window.canvas.draw()
 
     def update_initial_center_entry(self):
+        """
+
+        :return:
+        """
         ny, nx = self.model.image.shape
 
         if self.x0_entry.value() == 0.0:
@@ -150,6 +167,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.y0_entry.setValue(1934.0)
 
     def update_center_label(self):
+        """
+
+        :return:
+        """
         if self.model.center is None:
             return
 
@@ -160,15 +181,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.get_ringsum_button.setEnabled(True)
 
     def find_center(self, pushed):
+        """
+
+        :param pushed:
+        :return:
+        """
         xguess = self.x0_entry.value()
         yguess = self.y0_entry.value()
 
         self.controller.find_center(xguess, yguess)
 
     def find_ringsum(self, pushed):
+        """
+
+        :param pushed:
+        :return:
+        """
         self.controller.get_ringsum()
 
     def plot_ringsum(self):
+        """
+
+        :return:
+        """
         r = self.model.r
         sig = self.model.ringsum
         sig_sd = self.model.ringsum_err
@@ -189,6 +224,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_window.canvas.draw()
 
     def open_images_dialog(self, checked):
+        """
+
+        :param checked:
+        :return:
+        """
         dlg = QtWidgets.QFileDialog(self, 'Pick an Image')
         dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
         dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)"])
@@ -212,8 +252,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.controller.read_image_data(filename, bg_filename)
 
     def update_status_label(self):
+        """
+
+        :return:
+        """
         new_status = self.model.status
         status_str = "Status: {0:s}".format(new_status)
         self.status_label.setText(status_str)
 
-
+    def enable_save_ringsum(self):
+        self.save_ringsum_action.setEnabled(True)

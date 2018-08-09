@@ -1,9 +1,12 @@
 import collections
 
+
 class FabryPerotModel(object):
 
     def __init__(self):
         super(FabryPerotModel, self).__init__()
+        self.image_name = None
+        self.background_name = None
         self.image = None
         self.background = None
         self.r = None
@@ -51,4 +54,18 @@ class FabryPerotModel(object):
         current_registry = self.update_registry[registry]
         for fn in current_registry:
             fn()
+
+    def to_dict(self):
+        """
+
+        :return:
+        """
+        output_dict = {'fname': self.image_name,
+                       'bg_fname': self.background_name,
+                       'center': self.center,
+                       'r': self.r,
+                       'sig': self.ringsum,
+                       'sig_sd': self.ringsum_err
+                       }
+        return output_dict
 

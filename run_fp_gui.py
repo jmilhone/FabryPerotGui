@@ -9,6 +9,9 @@ import os.path as path
 
 
 class App(QtWidgets.QApplication):
+    """
+
+    """
     def __init__(self, sys_argv, filename=None, bg_filename=None):
         super(App, self).__init__(sys_argv)
         self.model = FabryPerotModel()
