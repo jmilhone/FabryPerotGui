@@ -164,6 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.cb is not None:
             self.cb.remove()
+            self.cb = None
 
         image_data = self.model.image
         im = self.plot_window.axs.imshow(image_data)
@@ -241,6 +242,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.cb is not None:
             self.cb.remove()
+            self.cb = None
 
         self.plot_window.axs.errorbar(r, sig, yerr=sig_sd, color='C0')
         self.plot_window.axs.set_xlabel("R (px)")
