@@ -7,6 +7,8 @@ class FabryPerotModel(object):
         super(FabryPerotModel, self).__init__()
         self.image_name = None
         self.background_name = None
+        self.super_pixel = None
+        self.binsize = None
         self.image = None
         self.background = None
         self.r = None

@@ -44,6 +44,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.x0_entry = QtWidgets.QDoubleSpinBox()
         self.y0_entry = QtWidgets.QDoubleSpinBox()
 
+        self.binsize_label = QtWidgets.QLabel()
+        self.binsize_entry = QtWidgets.QDoubleSpinBox()
+        self.binsize_box = QtWidgets.QHBoxLayout()
+
+        self.npix_label = QtWidgets.QLabel()
+        self.npix_entry = QtWidgets.QSpinBox()
+        self.npix_box = QtWidgets.QHBoxLayout()
+
+        self.display_image_button = QtWidgets.QPushButton()
         self.find_center_button = QtWidgets.QPushButton()
 
         self.button_box = QtWidgets.QHBoxLayout()
@@ -69,6 +78,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.find_center_button.clicked.connect(self.find_center)
         self.get_ringsum_button.clicked.connect(self.find_ringsum)
         self.open_image_action.triggered.connect(self.open_images_dialog)
+        self.display_image_button.clicked.connect(self.display_image_button_pressed)
 
         if filename and bg_filename:
             self.controller.read_image_data(filename, bg_filename)
@@ -90,11 +100,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.x0_label.setText("X Center Guess: ")
         self.y0_label.setText("Y Center Guess: ")
 
+        self.npix_label.setText("Super Pixel Size")
+        self.npix_entry.setRange(1, 10)
+        self.npix_entry.setValue(5)
+
+        self.binsize_label.setText("Binsize (px)")
+        self.binsize_entry.setRange(0.01, 1)
+        self.binsize_entry.setValue(0.1)
+
         self.x0_entry.setRange(0.0, 100000.0)
         self.y0_entry.setRange(0.0, 100000.0)
 
         self.x0_entry.setValue(0.0)
         self.y0_entry.setValue(0.0)
+
+        self.display_image_button.setText("Display Image")
 
         self.find_center_button.setText("Find Center")
         self.center_label.setText("Center: ")
@@ -104,18 +124,27 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.status_label.setText("Status: IDLE")
 
+        self.binsize_box.addWidget(self.binsize_label)
+        self.binsize_box.addWidget(self.binsize_entry)
+
+        self.npix_box.addWidget(self.npix_label)
+        self.npix_box.addWidget(self.npix_entry)
+
         self.x0_guess_box.addWidget(self.x0_label)
         self.x0_guess_box.addWidget(self.x0_entry)
 
         self.y0_guess_box.addWidget(self.y0_label)
         self.y0_guess_box.addWidget(self.y0_entry)
 
+        self.button_box.addWidget(self.display_image_button)
         self.button_box.addWidget(self.find_center_button)
         self.button_box.addWidget(self.get_ringsum_button)
 
+        self.sidebar_vbox.addLayout(self.npix_box)
         self.sidebar_vbox.addLayout(self.x0_guess_box)
         self.sidebar_vbox.addLayout(self.y0_guess_box)
         self.sidebar_vbox.addWidget(self.center_label)
+        self.sidebar_vbox.addLayout(self.binsize_box)
         self.sidebar_vbox.addLayout(self.button_box)
         self.sidebar_vbox.addStretch()
         self.sidebar_vbox.addWidget(self.status_label)
@@ -161,10 +190,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.x0_entry.value() == 0.0:
             self.x0_entry.setValue(nx/2.0)
-            self.x0_entry.setValue(2985.7)
+            # self.x0_entry.setValue(2985.7)
         if self.y0_entry.value() == 0.0:
             self.y0_entry.setValue(ny/2.0)
-            self.y0_entry.setValue(1934.0)
+            # self.y0_entry.setValue(1934.0)
 
     def update_center_label(self):
         """
@@ -248,8 +277,27 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         bg_filename = dlg.selectedFiles()[0]
+        npix = self.npix_entry.value()
+        self.controller.read_image_data(filename, bg_filename, npix=npix)
 
-        self.controller.read_image_data(filename, bg_filename)
+    def display_image_button_pressed(self, checked):
+        fname = self.model.image_name
+        bg_fname = self.model.background_name
+        npix = self.model.super_pixel
+        data = self.model.image
+        user_npix = self.npix_entry.value()
+
+        if fname and bg_fname:
+            # we have file names
+            if data is None or user_npix != npix:
+                # we either don't have image data or we need to reopen for super pixelate
+                self.controller.read_image_data(fname, bg_fname, npix=user_npix)
+            else:
+                # shortcut to having image data updates
+                self.model.announce_update(registry='image_data')
+        else:
+            # Need to retrieve filenames from the user
+            self.open_images_dialog(None)
 
     def update_status_label(self):
         """

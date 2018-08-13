@@ -22,7 +22,7 @@ class MainController(object):
         self.model = model
         self.threadpool = QtCore.QThreadPool()
 
-    def read_image_data(self, filename, bg_filename):
+    def read_image_data(self, filename, bg_filename, npix=None):
         """Reads in image via helper function _read_image_data
 
         :param filename: path to image file
@@ -32,13 +32,20 @@ class MainController(object):
         """
         self.model.image_name = filename
         self.model.background_name = bg_filename
+        self.model.super_pixel = npix
+        # Reset ring sum data because we are reopening the image
+        self.model.center = None
+        self.model.r = None
+        self.model.ringsum = None
+        self.model.ringsum_err = None
+
         self.change_model_status_and_announce('Reading Images')
-        worker = workers.Worker(self._read_image_data, filename, bg_filename)
+        worker = workers.Worker(self._read_image_data, filename, bg_filename, npix=npix)
         worker.signals.result.connect(self.update_model_image_data)
         self.threadpool.start(worker)
 
     @staticmethod
-    def _read_image_data(filename, bg_filename):
+    def _read_image_data(filename, bg_filename, npix=None):
         """Reads in both image and background image data
 
         :param filename: path to image file
@@ -51,6 +58,9 @@ class MainController(object):
         image_data = images.get_data(filename, color='b')
         bg_image_data = images.get_data(bg_filename, color='b')
 
+        if npix is not None and npix > 1:
+            image_data = ringsum.super_pixelate(image_data, npix=npix)
+            bg_image_data = ringsum.super_pixelate(bg_image_data, npix=npix)
         return image_data, bg_image_data
 
     def update_model_image_data(self, incoming_data):
@@ -100,20 +110,22 @@ class MainController(object):
         self.model.announce_update(registry='image_data')
         self.change_model_status_and_announce('IDLE')
 
-    def get_ringsum(self):
+    def get_ringsum(self, binsize=0.1):
         """
 
         :return:
         """
         if self.model.center is None:
             return
+        self.model.binsize = binsize
         self.change_model_status_and_announce('Performing ring sum')
-        worker = workers.Worker(self._get_ringsum, self.model.image, self.model.background, *self.model.center)
+        worker = workers.Worker(self._get_ringsum, self.model.image, self.model.background, *self.model.center,
+                                binsize=binsize)
         worker.signals.result.connect(self.update_ringsum)
         self.threadpool.start(worker)
 
     @staticmethod
-    def _get_ringsum(data, bg_data, x0, y0):
+    def _get_ringsum(data, bg_data, x0, y0, binsize=0.1):
         """
 
         :param data:
@@ -122,8 +134,8 @@ class MainController(object):
         :param y0:
         :return:
         """
-        r, rs, rs_sd = ringsum.ringsum(data, x0, y0, quadrants=False, use_weighted=False)
-        _, rs_bg, rs_sd_bg = ringsum.ringsum(bg_data, x0, y0, quadrants=False, use_weighted=False)
+        r, rs, rs_sd = ringsum.ringsum(data, x0, y0, quadrants=False, use_weighted=False, binsize=binsize)
+        _, rs_bg, rs_sd_bg = ringsum.ringsum(bg_data, x0, y0, quadrants=False, use_weighted=False, binsize=binsize)
 
         rs -= rs_bg
         rs_sd = np.sqrt(rs_sd**2 + rs_sd_bg**2 + (0.01*rs)**2)
@@ -160,5 +172,4 @@ class MainController(object):
         """
         output_dict = self.model.to_dict()
         file_io.dict_2_h5(output_filename, output_dict)
-
 
