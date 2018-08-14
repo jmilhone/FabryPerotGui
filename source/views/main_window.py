@@ -85,7 +85,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Put all gui elements before this line!
         #self.options_group.setStyleSheet("QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px;}; QGroupBox::title {subcontrol-origin: margin; left: 3px; padding: 3 0 3 0;}")
         self.options_group.setStyleSheet("QGroupBox::title {subcontrol-origin: margin; left: 3px; bottom: 5 px; padding: 3 0 3 0;} QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px; font-weight: bold}")
-        self.setStyleSheet("padding: 2 2 2 2;")
+        self.setStyleSheet("padding: 2 0 2 0;")
         self.init_UI()
 
         # Subscribe functions for updates in model
@@ -182,7 +182,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabs.addTab(self.ringsum_plot_window, "Ring Sum")
         self.hbox.addWidget(self.tabs, 10)
         self.options_group.setLayout(self.sidebar_vbox)
-        self.hbox.addWidget(self.options_group)
+        self.hbox.addWidget(self.options_group, 4)
         #self.hbox.addLayout(self.sidebar_vbox, 4)
         #self.hbox.addWidget(self.options_frame)
         self.central_widget.setLayout(self.hbox)
