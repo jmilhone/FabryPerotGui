@@ -13,15 +13,18 @@ class MainWindow(QtWidgets.QMainWindow):
     :param controller: controller
     :type controller: source.controller.main_controller.MainController
     :attribute plot_window: matplotlib window with navigation toolbar
-    :type plot_window: source.views.matplotlib_widget.MatplotlibWidget
+    :type image_plot_window: source.views.matplotlib_widget.MatplotlibWidget
     """
 
     def __init__(self, model, controller, filename=None, bg_filename=None):
+        print(bg_filename)
         super(MainWindow, self).__init__()
         self.model = model
         self.controller = controller
         self.cb = None
-
+        # self.setStyleSheet("background-color: #5f6063;")
+        # self.setStyleSheet("background-color: #c1c1c1")
+        #self.setStyleSheet("background-color: #ffffff;")
         # set up menu bar and qactions
         # self.menu = QtWidgets.QMenuBar()
         self.menu = self.menuBar()
@@ -30,11 +33,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_image_action = QtWidgets.QAction('Open Images...', self)
         self.save_ringsum_action = QtWidgets.QAction('Save Ringsum Data...', self)
 
-        self.plot_window = MatplotlibWidget()
+        self.tabs = QtWidgets.QTabWidget()
+        # self.image_tab = self.ta
+        #self.options_frame = QtWidgets.QFrame()
+        #self.options_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        #self.options_frame.setFrameShadow(QtWidgets.QFrame.Raised)
+        #self.options_frame.setLineWidth(2)
+        # self.options_frame.setStyleSheet("border: 1px solid rgb(0, 255, 0);")
+        #self.options_frame.setFrameStyle('border: 1px solid rgb (0, 255, 0);')
+        # self.options_frame.setStyleSheet("background-color: #949699;")
+        #self.options_frame.setStyleSheet("background-color: #ffffff")
+
+        self.image_plot_window = MatplotlibWidget(self)
+        self.ringsum_plot_window = MatplotlibWidget(self)
+        print(self.image_plot_window.figure, self.ringsum_plot_window.figure)
         self.central_widget = QtWidgets.QWidget()
         self.hbox = QtWidgets.QHBoxLayout()
 
         self.sidebar_vbox = QtWidgets.QVBoxLayout()
+        #self.sidebar_vbox = QtWidgets.QVBoxLayout(self.options_frame)
         self.x0_guess_box = QtWidgets.QHBoxLayout()
         self.y0_guess_box = QtWidgets.QHBoxLayout()
 
@@ -63,7 +80,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.status_label = QtWidgets.QLabel()
 
+        self.options_group = QtWidgets.QGroupBox("Options")
+        self.options_group.setObjectName('OptionsGroup')
         # Put all gui elements before this line!
+        #self.options_group.setStyleSheet("QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px;}; QGroupBox::title {subcontrol-origin: margin; left: 3px; padding: 3 0 3 0;}")
+        self.options_group.setStyleSheet("QGroupBox::title {subcontrol-origin: margin; left: 3px; bottom: 5 px; padding: 3 0 3 0;} QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px; font-weight: bold}")
+        self.setStyleSheet("padding: 2 2 2 2;")
         self.init_UI()
 
         # Subscribe functions for updates in model
@@ -80,8 +102,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_image_action.triggered.connect(self.open_images_dialog)
         self.display_image_button.clicked.connect(self.display_image_button_pressed)
 
+        print('im here...')
+        print(filename, bg_filename)
         if filename and bg_filename:
-            self.controller.read_image_data(filename, bg_filename)
+            print('why im not here')
+            self.controller.read_image_data(filename, bg_filename, npix=self.npix_entry.value())
 
     def init_UI(self):
         """
@@ -103,6 +128,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.npix_label.setText("Super Pixel Size")
         self.npix_entry.setRange(1, 10)
         self.npix_entry.setValue(5)
+        #self.npix_label.setFrameShape(QtWidgets.QFrame.Panel)
+        #self.npix_label.setFrameShadow(QtWidgets.QFrame.Sunken)
+        #self.npix_label.setLineWidth(2)
 
         self.binsize_label.setText("Binsize (px)")
         self.binsize_entry.setRange(0.01, 1)
@@ -149,8 +177,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sidebar_vbox.addStretch()
         self.sidebar_vbox.addWidget(self.status_label)
 
-        self.hbox.addWidget(self.plot_window, 10)
-        self.hbox.addLayout(self.sidebar_vbox, 4)
+        # self.hbox.addWidget(self.plot_window, 10)
+        self.tabs.addTab(self.image_plot_window, "Image")
+        self.tabs.addTab(self.ringsum_plot_window, "Ring Sum")
+        self.hbox.addWidget(self.tabs, 10)
+        self.options_group.setLayout(self.sidebar_vbox)
+        self.hbox.addWidget(self.options_group)
+        #self.hbox.addLayout(self.sidebar_vbox, 4)
+        #self.hbox.addWidget(self.options_frame)
         self.central_widget.setLayout(self.hbox)
         self.setCentralWidget(self.central_widget)
 
@@ -160,27 +194,28 @@ class MainWindow(QtWidgets.QMainWindow):
         :return:
         """
 
-        self.plot_window.axs.cla()
+        self.image_plot_window.axs.cla()
 
         if self.cb is not None:
             self.cb.remove()
             self.cb = None
 
         image_data = self.model.image
-        im = self.plot_window.axs.imshow(image_data)
-        self.cb = self.plot_window.figure.colorbar(im, ax=self.plot_window.axs,
-                                         fraction=0.03, pad=0.04)
+        im = self.image_plot_window.axs.imshow(image_data)
+        self.cb = self.image_plot_window.figure.colorbar(im, ax=self.image_plot_window.axs,
+                                                         fraction=0.03, pad=0.04)
 
         if self.model.center is not None:
             x0, y0 = self.model.center
-            self.plot_window.axs.axvline(x0, color='C3')
-            self.plot_window.axs.axhline(y0, color='C1')
-        self.plot_window.axs.axis('image')
+            self.image_plot_window.axs.axvline(x0, color='C3')
+            self.image_plot_window.axs.axhline(y0, color='C1')
+        self.image_plot_window.axs.axis('image')
 
-        self.plot_window.figure.tight_layout()
-        self.plot_window.toolbar.update()
-        self.plot_window.toolbar.push_current()
-        self.plot_window.canvas.draw()
+        self.image_plot_window.figure.tight_layout()
+        self.image_plot_window.toolbar.update()
+        self.image_plot_window.toolbar.push_current()
+        self.image_plot_window.canvas.draw()
+        self.tabs.setCurrentIndex(0)
 
     def update_initial_center_entry(self):
         """
@@ -227,7 +262,7 @@ class MainWindow(QtWidgets.QMainWindow):
         :param pushed:
         :return:
         """
-        self.controller.get_ringsum()
+        self.controller.get_ringsum(binsize=self.binsize_entry.value())
 
     def plot_ringsum(self):
         """
@@ -238,21 +273,22 @@ class MainWindow(QtWidgets.QMainWindow):
         sig = self.model.ringsum
         sig_sd = self.model.ringsum_err
 
-        self.plot_window.axs.cla()
+        self.ringsum_plot_window.axs.cla()
 
-        if self.cb is not None:
-            self.cb.remove()
-            self.cb = None
+        # if self.cb is not None:
+        #     self.cb.remove()
+        #     self.cb = None
 
-        self.plot_window.axs.errorbar(r, sig, yerr=sig_sd, color='C0')
-        self.plot_window.axs.set_xlabel("R (px)")
-        self.plot_window.axs.set_ylabel("Counts")
-        self.plot_window.axs.axis('tight')
+        self.ringsum_plot_window.axs.errorbar(r, sig, yerr=sig_sd, color='C0')
+        self.ringsum_plot_window.axs.set_xlabel("R (px)")
+        self.ringsum_plot_window.axs.set_ylabel("Counts")
+        self.ringsum_plot_window.axs.axis('tight')
 
-        self.plot_window.figure.tight_layout()
-        self.plot_window.toolbar.update()
-        self.plot_window.toolbar.push_current()
-        self.plot_window.canvas.draw()
+        self.ringsum_plot_window.figure.tight_layout()
+        self.ringsum_plot_window.toolbar.update()
+        self.ringsum_plot_window.toolbar.push_current()
+        self.ringsum_plot_window.canvas.draw()
+        self.tabs.setCurrentIndex(1)
 
     def open_images_dialog(self, checked):
         """

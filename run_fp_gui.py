@@ -34,7 +34,7 @@ if __name__ == "__main__":
         filename = path.expanduser(args.image)
         filename = path.abspath(filename)
 
-    if bg_filename is not None:
+    if args.background is not None:
         bg_filename = path.expanduser(args.background)
         bg_filename = path.abspath(bg_filename)
 

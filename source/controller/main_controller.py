@@ -10,6 +10,7 @@ from ..views import workers
 from fabry.tools import images, file_io
 from fabry.core import ringsum
 
+
 class MainController(object):
     """
 

@@ -18,10 +18,13 @@ class MatplotlibWidget(QWidget):
 
         #self.figure, self.axs = plt.subplots(figsize=(width, height))
         self.gs = GridSpec(1, 1)
-        self.figure = plt.figure(0)
+        # self.figure = plt.figure(0, facecolor="#949699", edgecolor="#949699")
+        self.figure = plt.figure()
         self.axs = self.figure.add_subplot(self.gs[0, 0])
+        # self.axs.patch.set_facecolor("#949699")
         self.canvas = Canvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
+
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.toolbar)
         self.layout.addWidget(self.canvas)
