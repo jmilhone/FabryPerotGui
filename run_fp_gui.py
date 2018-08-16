@@ -2,7 +2,7 @@ from __future__ import division, print_function
 from PyQt5 import QtCore, QtGui, QtWidgets
 from source.views.main_window import MainWindow
 from source.controller.main_controller import MainController
-from source.models.model import FabryPerotModel
+from source.models.image_model import FabryPerotModel
 import sys
 import argparse
 import os.path as path

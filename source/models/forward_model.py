@@ -1,15 +1,25 @@
 from PyQt5 import QtCore
 import numpy as np
+from .base_model import BaseModel
 
 
-class ForwardModel(object):
+class ForwardModel(BaseModel):
 
-    def __init__(self, focal_length, etalon_spacing, finesse, wavelength_data=None):
+    def __init__(self, focal_length, etalon_spacing, finesse, pixel_size, wavelength_data=None):
         super(ForwardModel, self).__init__()
-        self.model = QForwardModel(data=wavelength_data)
+        wavelength_data = np.zeros((8,5))
+        wavelength_data[0, :] = np.asarray([488.0, 1.0, 40.0, 0.3, 0.0])
+        self.qmodel = QForwardModel(data=wavelength_data)
         self.L = focal_length
         self.d = etalon_spacing
         self.F = finesse
+        self.pixel_size = pixel_size
+
+        self.r = None
+        self.model_ringsum = None
+
+        self.update_registry = {'model_ringsum_update': list(),
+                                }
 
 
 class QForwardModel(QtCore.QAbstractTableModel):
@@ -17,9 +27,9 @@ class QForwardModel(QtCore.QAbstractTableModel):
     def __init__(self, data=None, parent=None):
         QtCore.QAbstractTableModel.__init__(self, parent=parent)
         self._data = data
-        self.column_names = ['Wavelength (nm)', 'Amp (Counts)', 'Velocity (km/s)']
+        self.column_names = ['Wavelength (nm)', 'Amp (Counts)', 'mu', 'Ti (eV)', 'Velocity (km/s)']
         if self._data is None:
-            self._data = np.zeros((8, 3))
+            self._data = np.zeros((8, 5))
 
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         if role != QtCore.Qt.DisplayRole:
@@ -82,4 +92,7 @@ class QForwardModel(QtCore.QAbstractTableModel):
     # didn't really see this in a lot of stack overflow answers, but was the key to having editable cells
     def flags(self, index):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+
+    def retrieve_data(self):
+        return self._data
 

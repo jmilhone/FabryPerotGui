@@ -1,7 +1,10 @@
 from __future__ import print_function, absolute_import, division
-from PyQt5 import QtGui, QtWidgets, QtCore
+from PyQt5 import QtWidgets
 from .matplotlib_widget import MatplotlibWidget
-from .forward_model import ForwardModel
+# from source.models.forward_model import ForwardModel
+from ..models.forward_model import ForwardModel
+from .label_and_edit_widget import QLabelAndSpinBox
+from ..controller.forward_controller import ForwardController
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -9,8 +12,8 @@ from .forward_model import ForwardModel
 class MainWindow(QtWidgets.QMainWindow):
     """
 
-    :param model: data model
-    :type model: source.models.model.FabryPerotModel
+    :param model: data qmodel
+    :type model: source.models.base_model.FabryPerotModel
     :param controller: controller
     :type controller: source.controller.main_controller.MainController
     :attribute plot_window: matplotlib window with navigation toolbar
@@ -23,6 +26,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model = model
         self.controller = controller
         self.cb = None
+        self.legend = None
         # set up menu bar and qactions
         self.menu = self.menuBar()
         self.file_menu = self.menu.addMenu('File')
@@ -41,25 +45,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.forward_model_sidebar_vbox = QtWidgets.QVBoxLayout()
         self.sidebar = QtWidgets.QVBoxLayout()
 
-        self.x0_guess_box = QtWidgets.QHBoxLayout()
-        self.y0_guess_box = QtWidgets.QHBoxLayout()
-
-        self.x0_label = QtWidgets.QLabel()
-        self.y0_label = QtWidgets.QLabel()
-
-        self.x0_entry = QtWidgets.QDoubleSpinBox()
-        self.y0_entry = QtWidgets.QDoubleSpinBox()
-
-        self.binsize_label = QtWidgets.QLabel()
-        self.binsize_entry = QtWidgets.QDoubleSpinBox()
-        self.binsize_box = QtWidgets.QHBoxLayout()
-
-        self.npix_label = QtWidgets.QLabel()
-        self.npix_entry = QtWidgets.QSpinBox()
-        self.npix_box = QtWidgets.QHBoxLayout()
-
+        self.x0_entry = QLabelAndSpinBox('X Center Guess', edit_type='QDoubleSpinBox', default_range=(0.0, 1e4),
+                                         default_value=0.0)
+        self.y0_entry = QLabelAndSpinBox('Y Center Guess', edit_type='QDoubleSpinBox', default_range=(0.0, 1e4),
+                                         default_value=0.0)
+        self.binsize_entry = QLabelAndSpinBox('Binsize (px)', edit_type='QDoubleSpinBox', default_range=(0.01, 2.0),
+                                              default_value=0.1)
+        self.npix_entry = QLabelAndSpinBox('Super Pixel Size (px)', edit_type='QSpinBox', default_range=(1, 10),
+                                           default_value=5)
+        self.pixel_size_entry = QLabelAndSpinBox('Pixel Size (mm)', edit_type='QDoubleSpinBox',
+                                                 default_range=(0.0001, 0.1), default_value=0.004, precision=4)
         self.display_image_button = QtWidgets.QPushButton()
         self.find_center_button = QtWidgets.QPushButton()
+        self.calculate_forward_button = QtWidgets.QPushButton()
 
         self.button_box = QtWidgets.QHBoxLayout()
 
@@ -68,9 +66,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.get_ringsum_button = QtWidgets.QPushButton()
 
         self.status_label = QtWidgets.QLabel()
-        self.forward_model = ForwardModel(150.0, 0.88, 20.0)
+        self.forward_model = ForwardModel(150.0, 0.88, 20.0, 0.004)
+        self.forward_controller = ForwardController(self.forward_model, self.model)
         self.table_view = QtWidgets.QTableView()
-        self.table_view.setModel(self.forward_model.model)
+        self.table_view.setModel(self.forward_model.qmodel)
+
+        self.finesse = QLabelAndSpinBox('Finesse', edit_type='QDoubleSpinBox', default_value=20,
+                                        default_range=(1.0, 30.0))
+        self.etalon_spacing = QLabelAndSpinBox('Etalon Spacing (mm)', edit_type='QDoubleSpinBox', default_value=0.88,
+                                               default_range=(0.1, 5.0), precision=9)
+        self.focal_length = QLabelAndSpinBox('Focal Length (mm)', edit_type='QDoubleSpinBox', default_value=150.0,
+                                             default_range=(1.0, 1000.0), precision=4)
 
         self.image_options_group = QtWidgets.QGroupBox("Image Options")
         self.image_options_group.setObjectName('OptionsGroup')
@@ -85,25 +91,35 @@ class MainWindow(QtWidgets.QMainWindow):
         # Put all gui elements before this line!
         self.init_UI()
 
-        # Subscribe functions for updates in model
+        self.button_list = [
+            self.display_image_button,
+            self.find_center_button,
+            self.get_ringsum_button,
+            self.calculate_forward_button,
+        ]
+
+        # Subscribe functions for updates in q
         self.model.subscribe_update_func(self.display_image_data, registry='image_data')
         self.model.subscribe_update_func(self.update_initial_center_entry, registry='image_data')
         self.model.subscribe_update_func(self.plot_ringsum, registry='ringsum_data')
         self.model.subscribe_update_func(self.update_center_label, registry='image_data')
         self.model.subscribe_update_func(self.update_status_label, registry='status')
         self.model.subscribe_update_func(self.enable_save_ringsum, registry='ringsum_data')
+        self.model.subscribe_update_func(self.forward_controller.update_effective_pixel_size, registry='image_data')
+        self.forward_model.subscribe_update_func(self.plot_ringsum, registry='model_ringsum_update')
 
         # Set up PyQt signals for GUI Events
         self.find_center_button.clicked.connect(self.find_center)
         self.get_ringsum_button.clicked.connect(self.find_ringsum)
         self.open_image_action.triggered.connect(self.open_images_dialog)
         self.display_image_button.clicked.connect(self.display_image_button_pressed)
+        self.calculate_forward_button.clicked.connect(self.calculate_model_spectrum)
 
         print('im here...')
         print(filename, bg_filename)
         if filename and bg_filename:
             print('why im not here')
-            self.controller.read_image_data(filename, bg_filename, npix=self.npix_entry.value())
+            self.controller.read_image_data(filename, bg_filename, npix=self.npix_entry.value(), px_size=self.pixel_size_entry.value())
 
     def init_UI(self):
         """
@@ -119,23 +135,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_menu.addAction(self.open_image_action)
         self.file_menu.addAction(self.save_ringsum_action)
 
-        self.x0_label.setText("X Center Guess: ")
-        self.y0_label.setText("Y Center Guess: ")
-
-        self.npix_label.setText("Super Pixel Size")
-        self.npix_entry.setRange(1, 10)
-        self.npix_entry.setValue(5)
-
-        self.binsize_label.setText("Binsize (px)")
-        self.binsize_entry.setRange(0.01, 1)
-        self.binsize_entry.setValue(0.1)
-
-        self.x0_entry.setRange(0.0, 100000.0)
-        self.y0_entry.setRange(0.0, 100000.0)
-
-        self.x0_entry.setValue(0.0)
-        self.y0_entry.setValue(0.0)
-
         self.display_image_button.setText("Display Image")
 
         self.find_center_button.setText("Find Center")
@@ -144,52 +143,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.get_ringsum_button.setText("Find Ringsum")
         self.get_ringsum_button.setDisabled(True)
 
+        self.calculate_forward_button.setText('Calculate Forward Model')
+
         self.status_label.setText("Status: IDLE")
-
-        self.binsize_box.addWidget(self.binsize_label)
-        self.binsize_box.addWidget(self.binsize_entry)
-
-        self.npix_box.addWidget(self.npix_label)
-        self.npix_box.addWidget(self.npix_entry)
-
-        self.x0_guess_box.addWidget(self.x0_label)
-        self.x0_guess_box.addWidget(self.x0_entry)
-
-        self.y0_guess_box.addWidget(self.y0_label)
-        self.y0_guess_box.addWidget(self.y0_entry)
 
         self.button_box.addWidget(self.display_image_button)
         self.button_box.addWidget(self.find_center_button)
         self.button_box.addWidget(self.get_ringsum_button)
 
-        self.image_sidebar_vbox.addLayout(self.npix_box)
-        self.image_sidebar_vbox.addLayout(self.x0_guess_box)
-        self.image_sidebar_vbox.addLayout(self.y0_guess_box)
+        self.image_sidebar_vbox.addWidget(self.pixel_size_entry)
+        self.image_sidebar_vbox.addWidget(self.npix_entry)
+        self.image_sidebar_vbox.addWidget(self.x0_entry)
+        self.image_sidebar_vbox.addWidget(self.y0_entry)
         self.image_sidebar_vbox.addWidget(self.center_label)
-        self.image_sidebar_vbox.addLayout(self.binsize_box)
+        self.image_sidebar_vbox.addWidget(self.binsize_entry)
         self.image_sidebar_vbox.addLayout(self.button_box)
         self.image_options_group.setLayout(self.image_sidebar_vbox)
 
-        self.finesse_label = QtWidgets.QLabel()
-        self.finesse_label.setText("Finesse!      ")
-        self.forward_model_sidebar_vbox.addWidget(self.finesse_label)
+        self.forward_model_sidebar_vbox.addWidget(self.finesse)
+        self.forward_model_sidebar_vbox.addWidget(self.etalon_spacing)
+        self.forward_model_sidebar_vbox.addWidget(self.focal_length)
         self.forward_model_sidebar_vbox.addWidget(self.table_view)
+        self.forward_model_sidebar_vbox.addWidget(self.calculate_forward_button)
         self.forward_model_options_group.setLayout(self.forward_model_sidebar_vbox)
 
         self.sidebar.addWidget(self.image_options_group)
         self.sidebar.addWidget(self.forward_model_options_group)
-        self.sidebar.addStretch()
+        self.sidebar.addStretch(10)
         self.sidebar.addWidget(self.status_label)
 
-        # self.hbox.addWidget(self.plot_window, 10)
         self.tabs.addTab(self.image_plot_window, "Image")
         self.tabs.addTab(self.ringsum_plot_window, "Ring Sum")
+
         self.hbox.addWidget(self.tabs, 10)
-        self.hbox.addLayout(self.sidebar, 2)
-        #self.hbox.addLayout(self.sidebar_vbox, 4)
-        #self.hbox.addWidget(self.options_frame)
+        self.hbox.addLayout(self.sidebar, 6)
         self.central_widget.setLayout(self.hbox)
         self.setCentralWidget(self.central_widget)
+
+        self.table_view.resizeColumnsToContents()
 
     def display_image_data(self):
         """
@@ -272,6 +263,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         :return:
         """
+        if self.legend is not None:
+            self.legend.remove()
+            self.legend = None
+
         r = self.model.r
         sig = self.model.ringsum
         sig_sd = self.model.ringsum_err
@@ -282,14 +277,24 @@ class MainWindow(QtWidgets.QMainWindow):
         #     self.cb.remove()
         #     self.cb = None
 
-        self.ringsum_plot_window.axs.errorbar(r, sig, yerr=sig_sd, color='C0')
+        if all(x is not None for x in (r, sig, sig_sd)):
+            self.ringsum_plot_window.axs.errorbar(r, sig, yerr=sig_sd, color='C0', label='Image Ringsum')
+
+        r_model = self.forward_model.r
+        ringsum_model = self.forward_model.model_ringsum
+
+        if r_model is not None and ringsum_model is not None:
+            self.ringsum_plot_window.axs.plot(r_model, ringsum_model, color='C1', label='Model Ringsum')
         self.ringsum_plot_window.axs.set_xlabel("R (px)")
         self.ringsum_plot_window.axs.set_ylabel("Counts")
         self.ringsum_plot_window.axs.axis('tight')
 
-        self.ringsum_plot_window.figure.tight_layout()
+        if len(self.ringsum_plot_window.axs.get_lines()):
+            self.legend = self.ringsum_plot_window.axs.legend()
+
         self.ringsum_plot_window.toolbar.update()
         self.ringsum_plot_window.toolbar.push_current()
+        self.ringsum_plot_window.figure.tight_layout()
         self.ringsum_plot_window.canvas.draw()
         self.tabs.setCurrentIndex(1)
 
@@ -319,20 +324,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
         bg_filename = dlg.selectedFiles()[0]
         npix = self.npix_entry.value()
-        self.controller.read_image_data(filename, bg_filename, npix=npix)
+        px_size = self.pixel_size_entry.value()
+        self.controller.read_image_data(filename, bg_filename, npix=npix, px_size=px_size)
 
     def display_image_button_pressed(self, checked):
         fname = self.model.image_name
         bg_fname = self.model.background_name
         npix = self.model.super_pixel
+        px_size = self.model.pixel_size
         data = self.model.image
         user_npix = self.npix_entry.value()
+        user_px_size = self.pixel_size_entry.value()
 
         if fname and bg_fname:
             # we have file names
-            if data is None or user_npix != npix:
+            if data is None or user_npix != npix or user_px_size != px_size:
                 # we either don't have image data or we need to reopen for super pixelate
-                self.controller.read_image_data(fname, bg_fname, npix=user_npix)
+                self.controller.read_image_data(fname, bg_fname, npix=user_npix, px_size=user_px_size)
             else:
                 # shortcut to having image data updates
                 self.model.announce_update(registry='image_data')
@@ -346,8 +354,26 @@ class MainWindow(QtWidgets.QMainWindow):
         :return:
         """
         new_status = self.model.status
+        enable = True
+        if new_status != 'IDLE':
+            enable = False
+        self.toggle_all_buttons(enable)
+
         status_str = "Status: {0:s}".format(new_status)
         self.status_label.setText(status_str)
 
+    def toggle_all_buttons(self, enabled):
+        for button in self.button_list:
+            if button == self.get_ringsum_button and self.model.center is None:
+                button.setEnabled(False)
+            else:
+                button.setEnabled(enabled)
+
     def enable_save_ringsum(self):
         self.save_ringsum_action.setEnabled(True)
+
+    def calculate_model_spectrum(self):
+        L = self.focal_length.value()
+        d = self.etalon_spacing.value()
+        F = self.finesse.value()
+        self.forward_controller.calculate_model_spectrum(L, d, F)

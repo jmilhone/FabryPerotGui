@@ -15,7 +15,7 @@ class MainController(object):
     """
 
     :param model: Model object
-    :type model: source.models.model.FabryPerotModel
+    :type model: source.models.base_model.FabryPerotModel
     """
 
     def __init__(self, model):
@@ -23,7 +23,7 @@ class MainController(object):
         self.model = model
         self.threadpool = QtCore.QThreadPool()
 
-    def read_image_data(self, filename, bg_filename, npix=None):
+    def read_image_data(self, filename, bg_filename, npix=None, px_size=None):
         """Reads in image via helper function _read_image_data
 
         :param filename: path to image file
@@ -34,6 +34,7 @@ class MainController(object):
         self.model.image_name = filename
         self.model.background_name = bg_filename
         self.model.super_pixel = npix
+        self.model.pixel_size = px_size
         # Reset ring sum data because we are reopening the image
         self.model.center = None
         self.model.r = None
@@ -65,8 +66,8 @@ class MainController(object):
         return image_data, bg_image_data
 
     def update_model_image_data(self, incoming_data):
-        """Updates self.model.image and self.model.background with incoming data and calls
-        self.model.announce_update for the image data registry
+        """Updates self.q.image and self.q.background with incoming data and calls
+        self.q.announce_update for the image data registry
 
         :param incoming_data: image and background image 2D numpy arrays
         :type incoming_data: tuple (np.ndarray, np.ndarray)
