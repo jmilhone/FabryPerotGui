@@ -1,6 +1,7 @@
 from __future__ import print_function, absolute_import, division
 from PyQt5 import QtGui, QtWidgets, QtCore
 from .matplotlib_widget import MatplotlibWidget
+from .forward_model import ForwardModel
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -22,11 +23,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model = model
         self.controller = controller
         self.cb = None
-        # self.setStyleSheet("background-color: #5f6063;")
-        # self.setStyleSheet("background-color: #c1c1c1")
-        #self.setStyleSheet("background-color: #ffffff;")
         # set up menu bar and qactions
-        # self.menu = QtWidgets.QMenuBar()
         self.menu = self.menuBar()
         self.file_menu = self.menu.addMenu('File')
 
@@ -34,24 +31,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.save_ringsum_action = QtWidgets.QAction('Save Ringsum Data...', self)
 
         self.tabs = QtWidgets.QTabWidget()
-        # self.image_tab = self.ta
-        #self.options_frame = QtWidgets.QFrame()
-        #self.options_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        #self.options_frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        #self.options_frame.setLineWidth(2)
-        # self.options_frame.setStyleSheet("border: 1px solid rgb(0, 255, 0);")
-        #self.options_frame.setFrameStyle('border: 1px solid rgb (0, 255, 0);')
-        # self.options_frame.setStyleSheet("background-color: #949699;")
-        #self.options_frame.setStyleSheet("background-color: #ffffff")
 
         self.image_plot_window = MatplotlibWidget(self)
         self.ringsum_plot_window = MatplotlibWidget(self)
-        print(self.image_plot_window.figure, self.ringsum_plot_window.figure)
         self.central_widget = QtWidgets.QWidget()
         self.hbox = QtWidgets.QHBoxLayout()
 
-        self.sidebar_vbox = QtWidgets.QVBoxLayout()
-        #self.sidebar_vbox = QtWidgets.QVBoxLayout(self.options_frame)
+        self.image_sidebar_vbox = QtWidgets.QVBoxLayout()
+        self.forward_model_sidebar_vbox = QtWidgets.QVBoxLayout()
+        self.sidebar = QtWidgets.QVBoxLayout()
+
         self.x0_guess_box = QtWidgets.QHBoxLayout()
         self.y0_guess_box = QtWidgets.QHBoxLayout()
 
@@ -79,13 +68,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.get_ringsum_button = QtWidgets.QPushButton()
 
         self.status_label = QtWidgets.QLabel()
+        self.forward_model = ForwardModel(150.0, 0.88, 20.0)
+        self.table_view = QtWidgets.QTableView()
+        self.table_view.setModel(self.forward_model.model)
 
-        self.options_group = QtWidgets.QGroupBox("Options")
-        self.options_group.setObjectName('OptionsGroup')
-        # Put all gui elements before this line!
+        self.image_options_group = QtWidgets.QGroupBox("Image Options")
+        self.image_options_group.setObjectName('OptionsGroup')
+        self.forward_model_options_group = QtWidgets.QGroupBox("Forward Model Options")
+        self.forward_model_options_group.setObjectName('ForwardGroup')
+
         #self.options_group.setStyleSheet("QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px;}; QGroupBox::title {subcontrol-origin: margin; left: 3px; padding: 3 0 3 0;}")
-        self.options_group.setStyleSheet("QGroupBox::title {subcontrol-origin: margin; left: 3px; bottom: 5 px; padding: 3 0 3 0;} QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px; font-weight: bold}")
+        self.image_options_group.setStyleSheet("QGroupBox::title {subcontrol-origin: margin; left: 3px; bottom: 5 px; padding: 3 0 3 0;} QGroupBox#OptionsGroup {border: 1px solid gray; border-radius: 3px; font-weight: bold}")
+        self.forward_model_options_group.setStyleSheet("QGroupBox::title {subcontrol-origin: margin; left: 3px; bottom: 5 px; padding: 3 0 3 0;} QGroupBox#ForwardGroup {border: 1px solid gray; border-radius: 3px; font-weight: bold}")
         self.setStyleSheet("padding: 2 0 2 0;")
+
+        # Put all gui elements before this line!
         self.init_UI()
 
         # Subscribe functions for updates in model
@@ -128,9 +125,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.npix_label.setText("Super Pixel Size")
         self.npix_entry.setRange(1, 10)
         self.npix_entry.setValue(5)
-        #self.npix_label.setFrameShape(QtWidgets.QFrame.Panel)
-        #self.npix_label.setFrameShadow(QtWidgets.QFrame.Sunken)
-        #self.npix_label.setLineWidth(2)
 
         self.binsize_label.setText("Binsize (px)")
         self.binsize_entry.setRange(0.01, 1)
@@ -168,21 +162,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.button_box.addWidget(self.find_center_button)
         self.button_box.addWidget(self.get_ringsum_button)
 
-        self.sidebar_vbox.addLayout(self.npix_box)
-        self.sidebar_vbox.addLayout(self.x0_guess_box)
-        self.sidebar_vbox.addLayout(self.y0_guess_box)
-        self.sidebar_vbox.addWidget(self.center_label)
-        self.sidebar_vbox.addLayout(self.binsize_box)
-        self.sidebar_vbox.addLayout(self.button_box)
-        self.sidebar_vbox.addStretch()
-        self.sidebar_vbox.addWidget(self.status_label)
+        self.image_sidebar_vbox.addLayout(self.npix_box)
+        self.image_sidebar_vbox.addLayout(self.x0_guess_box)
+        self.image_sidebar_vbox.addLayout(self.y0_guess_box)
+        self.image_sidebar_vbox.addWidget(self.center_label)
+        self.image_sidebar_vbox.addLayout(self.binsize_box)
+        self.image_sidebar_vbox.addLayout(self.button_box)
+        self.image_options_group.setLayout(self.image_sidebar_vbox)
+
+        self.finesse_label = QtWidgets.QLabel()
+        self.finesse_label.setText("Finesse!      ")
+        self.forward_model_sidebar_vbox.addWidget(self.finesse_label)
+        self.forward_model_sidebar_vbox.addWidget(self.table_view)
+        self.forward_model_options_group.setLayout(self.forward_model_sidebar_vbox)
+
+        self.sidebar.addWidget(self.image_options_group)
+        self.sidebar.addWidget(self.forward_model_options_group)
+        self.sidebar.addStretch()
+        self.sidebar.addWidget(self.status_label)
 
         # self.hbox.addWidget(self.plot_window, 10)
         self.tabs.addTab(self.image_plot_window, "Image")
         self.tabs.addTab(self.ringsum_plot_window, "Ring Sum")
         self.hbox.addWidget(self.tabs, 10)
-        self.options_group.setLayout(self.sidebar_vbox)
-        self.hbox.addWidget(self.options_group, 4)
+        self.hbox.addLayout(self.sidebar, 2)
         #self.hbox.addLayout(self.sidebar_vbox, 4)
         #self.hbox.addWidget(self.options_frame)
         self.central_widget.setLayout(self.hbox)
