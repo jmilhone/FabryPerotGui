@@ -166,7 +166,7 @@ class MainController(object):
         self.model.status = status
         self.model.announce_update(registry='status')
 
-    def save_model_data(self, output_filename):
+    def save_image_model_data(self, output_filename):
         """
 
         :param output_filename:

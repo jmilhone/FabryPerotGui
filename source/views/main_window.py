@@ -7,6 +7,7 @@ from .label_and_edit_widget import QLabelAndSpinBox
 from ..controller.forward_controller import ForwardController
 # import matplotlib.pyplot as plt
 # from mpl_toolkits.axes_grid1 import make_axes_locatable
+import numpy as np
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -33,12 +34,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.open_image_action = QtWidgets.QAction('Open Images...', self)
         self.save_ringsum_action = QtWidgets.QAction('Save Ringsum Data...', self)
+        self.open_wavelength_model_input_action = QtWidgets.QAction("Open Wavelength Model...", self)
 
         self.tabs = QtWidgets.QTabWidget()
 
-        self.image_plot_window = MatplotlibWidget(self)
-        self.ringsum_plot_window = MatplotlibWidget(self)
-        self.central_widget = QtWidgets.QWidget()
+        self.image_plot_window = MatplotlibWidget()
+        self.ringsum_plot_window = MatplotlibWidget()
+        self.central_widget = QtWidgets.QWidget(self)
         self.hbox = QtWidgets.QHBoxLayout()
 
         self.image_sidebar_vbox = QtWidgets.QVBoxLayout()
@@ -68,6 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_label = QtWidgets.QLabel()
         self.forward_model = ForwardModel(150.0, 0.88, 20.0, 0.004)
         self.forward_controller = ForwardController(self.forward_model, self.model)
+        #self.forward_model.qmodel.save_data_to_csv("test_input.csv")
         self.table_view = QtWidgets.QTableView()
         self.table_view.setModel(self.forward_model.qmodel)
 
@@ -98,6 +101,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.calculate_forward_button,
         ]
 
+        self.action_list = [
+            self.open_image_action,
+            self.save_ringsum_action,
+            self.open_wavelength_model_input_action,
+        ]
+
         # Subscribe functions for updates in q
         self.model.subscribe_update_func(self.display_image_data, registry='image_data')
         self.model.subscribe_update_func(self.update_initial_center_entry, registry='image_data')
@@ -114,6 +123,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_image_action.triggered.connect(self.open_images_dialog)
         self.display_image_button.clicked.connect(self.display_image_button_pressed)
         self.calculate_forward_button.clicked.connect(self.calculate_model_spectrum)
+        self.save_ringsum_action.triggered.connect(self.save_ringsum_to_file)
+        self.open_wavelength_model_input_action.triggered.connect(self.open_wavelength_model)
 
         print('im here...')
         print(filename, bg_filename)
@@ -130,10 +141,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_image_action.setCheckable(False)
         self.save_ringsum_action.setCheckable(False)
         self.save_ringsum_action.setEnabled(False)
+        self.open_wavelength_model_input_action.setCheckable(False)
 
         # add actions to menu bar
         self.file_menu.addAction(self.open_image_action)
         self.file_menu.addAction(self.save_ringsum_action)
+        self.file_menu.addAction(self.open_wavelength_model_input_action)
 
         self.display_image_button.setText("Display Image")
 
@@ -167,6 +180,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.forward_model_sidebar_vbox.addWidget(self.calculate_forward_button)
         self.forward_model_options_group.setLayout(self.forward_model_sidebar_vbox)
 
+        self.sidebar.addStretch(1)
         self.sidebar.addWidget(self.image_options_group)
         self.sidebar.addWidget(self.forward_model_options_group)
         self.sidebar.addStretch(10)
@@ -277,16 +291,20 @@ class MainWindow(QtWidgets.QMainWindow):
         #     self.cb.remove()
         #     self.cb = None
 
+        unit_string = ""
         if all(x is not None for x in (r, sig, sig_sd)):
-            self.ringsum_plot_window.axs.errorbar(r, sig, yerr=sig_sd, color='C0', label='Image Ringsum')
+            n = int(np.log10(sig.max()))
+            print('divisor', n)
+            divisor = 10.0 ** n
+            unit_string = "(x$10^{" + "{0}".format(n) + "}$)"
+            self.ringsum_plot_window.axs.errorbar(r, sig/divisor, yerr=sig_sd/divisor, color='C0', label='Image Ringsum')
 
         r_model = self.forward_model.r
         ringsum_model = self.forward_model.model_ringsum
-
         if r_model is not None and ringsum_model is not None:
             self.ringsum_plot_window.axs.plot(r_model, ringsum_model, color='C1', label='Model Ringsum')
         self.ringsum_plot_window.axs.set_xlabel("R (px)")
-        self.ringsum_plot_window.axs.set_ylabel("Counts")
+        self.ringsum_plot_window.axs.set_ylabel("Counts "+unit_string)
         self.ringsum_plot_window.axs.axis('tight')
 
         if len(self.ringsum_plot_window.axs.get_lines()):
@@ -358,16 +376,34 @@ class MainWindow(QtWidgets.QMainWindow):
         if new_status != 'IDLE':
             enable = False
         self.toggle_all_buttons(enable)
+        self.toggle_all_actions(enable)
 
         status_str = "Status: {0:s}".format(new_status)
         self.status_label.setText(status_str)
 
     def toggle_all_buttons(self, enabled):
+        """
+
+        :param enabled:
+        :return:
+        """
         for button in self.button_list:
             if button == self.get_ringsum_button and self.model.center is None:
                 button.setEnabled(False)
             else:
                 button.setEnabled(enabled)
+
+    def toggle_all_actions(self, enabled):
+        """
+
+        :param enabled:
+        :return:
+        """
+        for action in self.action_list:
+            if action == self.save_ringsum_action and self.model.ringsum is None:
+                action.setEnabled(False)
+            else:
+                action.setEnabled(enabled)
 
     def enable_save_ringsum(self):
         self.save_ringsum_action.setEnabled(True)
@@ -377,3 +413,19 @@ class MainWindow(QtWidgets.QMainWindow):
         d = self.etalon_spacing.value()
         F = self.finesse.value()
         self.forward_controller.calculate_model_spectrum(L, d, F)
+
+    def save_ringsum_to_file(self):
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save Ringsum As", "", "HDF5 (*.h5)")
+        if filename:
+            self.controller.save_image_model_data(filename)
+
+    def open_wavelength_model(self, checked):
+        dlg = QtWidgets.QFileDialog(self, 'Pick a Wavelength Model File')
+        dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
+        dlg.setNameFilters(["CSV (*.csv)", "Text (*.txt)"])
+        dlg.selectNameFilter("CSV (*.csv)")
+
+        if dlg.exec_():
+            filename = dlg.selectedFiles()[0]
+            self.forward_model.qmodel.load_data_from_csv(filename)
+

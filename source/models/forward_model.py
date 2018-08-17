@@ -41,6 +41,7 @@ class QForwardModel(QtCore.QAbstractTableModel):
         return QtCore.QVariant()
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
+        # print('im in data() right now')
         if role != QtCore.Qt.DisplayRole:
             return QtCore.QVariant()
 
@@ -95,4 +96,21 @@ class QForwardModel(QtCore.QAbstractTableModel):
 
     def retrieve_data(self):
         return self._data
+
+    def load_data_from_csv(self, filename):
+        input_data = np.genfromtxt(filename, dtype=np.float64, delimiter=',',
+                                   filling_values=0.0, max_rows=8)
+        n, m = input_data.shape
+
+        if n != 8:
+            zero_pad = np.zeros((8-n, 5))
+            input_data = np.vstack((input_data, zero_pad))
+        self._data = input_data
+        self.dataChanged.emit(self.index(0, 0), self.index(7, 4), [QtCore.Qt.DisplayRole])
+
+    def save_data_to_csv(self, filename):
+        column_names = self.column_names
+        header = ",".join(column_names)
+        np.savetxt(filename, self._data, delimiter=',', header=header)
+
 
