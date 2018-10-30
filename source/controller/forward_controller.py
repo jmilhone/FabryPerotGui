@@ -39,7 +39,7 @@ class ForwardController(object):
         data = self.fp_forward_model.qmodel.retrieve_data()
         r = self.image_model.r
         if r is None:
-            r = np.linspace(0, 1000, 1001) # in pixels
+            r = np.linspace(0, 1000, 1001)  # in pixels
 
         wavelengths = []
         amplitudes = []
@@ -54,16 +54,17 @@ class ForwardController(object):
                 amplitudes.append(row[1])
                 masses.append(row[2])
                 temperatures.append(row[3])
-                velocities.append(row[4])
+                velocities.append(row[4]*1000)
         if len(wavelengths):
             worker = Worker(self._calculate_model_spectrum, r, L, d, F, wavelengths, masses, amplitudes, temperatures,
-                            velocities, nlambda=1000)
+                            velocities, nlambda=2000)
             worker.signals.result.connect(self.update_model_ringsum_data)
             self.threadpool.start(worker)
 
     @staticmethod
     def _calculate_model_spectrum(r, L, d, F, w0, mu, amp, temp, v, nlambda=1000):
-        signal = forward_model(r, L, d, F, w0, mu, amp, temp, v)
+        print(L, d, F, w0, mu, amp, temp, v, nlambda)
+        signal = forward_model(r, L, d, F, w0, mu, amp, temp, v, nlambda=nlambda)
         return r, signal
 
     def update_model_ringsum_data(self, incoming_data):

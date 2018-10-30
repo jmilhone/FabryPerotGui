@@ -54,7 +54,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.binsize_entry = QLabelAndSpinBox('Binsize (px)', edit_type='QDoubleSpinBox', default_range=(0.01, 2.0),
                                               default_value=0.1)
         self.npix_entry = QLabelAndSpinBox('Super Pixel Size (px)', edit_type='QSpinBox', default_range=(1, 10),
-                                           default_value=5)
+                                           default_value=1)
         self.pixel_size_entry = QLabelAndSpinBox('Pixel Size (mm)', edit_type='QDoubleSpinBox',
                                                  default_range=(0.0001, 0.1), default_value=0.004, precision=4)
         self.display_image_button = QtWidgets.QPushButton()
