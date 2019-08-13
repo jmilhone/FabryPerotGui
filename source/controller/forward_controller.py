@@ -26,7 +26,6 @@ class ForwardController(object):
         self.threadpool = QtCore.QThreadPool()
 
     def calculate_model_spectrum(self, L, d, F):
-        print('im here in calculate_model_spectrum')
         self.image_model.status = 'Calculating Model Ringsum'
         self.image_model.announce_update(registry='status')
 
@@ -35,7 +34,6 @@ class ForwardController(object):
         self.fp_forward_model.F = F
         pixel_size = self.fp_forward_model.pixel_size
         L /= pixel_size
-        print(L, d)
         data = self.fp_forward_model.qmodel.retrieve_data()
         r = self.image_model.r
         if r is None:
@@ -63,7 +61,6 @@ class ForwardController(object):
 
     @staticmethod
     def _calculate_model_spectrum(r, L, d, F, w0, mu, amp, temp, v, nlambda=1000):
-        print(L, d, F, w0, mu, amp, temp, v, nlambda)
         signal = forward_model(r, L, d, F, w0, mu, amp, temp, v, nlambda=nlambda)
         return r, signal
 
@@ -78,7 +75,6 @@ class ForwardController(object):
         pixel_size = self.image_model.pixel_size
         super_pixel_size = self.image_model.super_pixel
         self.fp_forward_model.pixel_size = pixel_size * super_pixel_size
-        print(self.fp_forward_model.pixel_size)
 
 
 

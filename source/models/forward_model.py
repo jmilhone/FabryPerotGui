@@ -62,15 +62,6 @@ class QForwardModel(QtCore.QAbstractTableModel):
         row = index.row()
         column = index.column()
 
-        # This doesn't work for me, stupid stack overflow
-        # try:
-        #     print(value)
-        #     value = value.toPyObject()
-        #     print(value)
-        # except AttributeError:
-        #     # I guess if I accept PySide, this should be handled differently, but I don't really care at this point
-        #     value = np.nan
-
         try:
             value = np.float64(value)
         except ValueError:

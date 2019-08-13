@@ -57,8 +57,12 @@ class MainController(object):
         :return: image and background 2D numpy arrays
         :rtype: tuple (np.ndarray, np.ndarray)
         """
-        image_data = images.get_data(filename, color='b')
-        bg_image_data = images.get_data(bg_filename, color='b')
+        image_data = images.get_data(filename, color='b', return_mean=True)
+
+        if bg_filename is None:
+            bg_image_data = np.zeros_like(image_data)
+        else:
+            bg_image_data = images.get_data(bg_filename, color='b', return_mean=True)
 
         if npix is not None and npix > 1:
             image_data = ringsum.super_pixelate(image_data, npix=npix)
@@ -136,8 +140,8 @@ class MainController(object):
         :param y0:
         :return:
         """
-        r, rs, rs_sd = ringsum.ringsum(data, x0, y0, quadrants=False, use_weighted=False, binsize=binsize)
-        _, rs_bg, rs_sd_bg = ringsum.ringsum(bg_data, x0, y0, quadrants=False, use_weighted=False, binsize=binsize)
+        r, rs, rs_sd = ringsum.ringsum(data, x0, y0, quadrants=False, use_weighted=False, binsize=binsize, remove_hot_pixels=True)
+        _, rs_bg, rs_sd_bg = ringsum.ringsum(bg_data, x0, y0, quadrants=False, use_weighted=False, binsize=binsize, remove_hot_pixels=True)
 
         rs -= rs_bg
         rs_sd = np.sqrt(rs_sd**2 + rs_sd_bg**2 + (0.01*rs)**2)
