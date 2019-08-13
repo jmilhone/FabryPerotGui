@@ -330,7 +330,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         dlg = QtWidgets.QFileDialog(self, 'Pick an Image')
         dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
-        dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)"])
+        dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)", "Tiff (*.tif)"])
         dlg.selectNameFilter("Images (*.nef)")
 
         if not dlg.exec_():
@@ -341,7 +341,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         dlg = QtWidgets.QFileDialog(self, 'Pick a Background Image')
         dlg.setFileMode(QtWidgets.QFileDialog.AnyFile)
-        dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)"])
+        dlg.setNameFilters(["Images (*.nef)", "Numpy (*.npy)", "HDF5 (*.h5)", "Tiff (*.tif)"])
         dlg.selectNameFilter("Images (*.nef)")
 
         # Dont need a background to run
